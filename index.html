@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>智慧農務計算器 (專家版)</title>
+    <style>
+        :root {
+            --bg-color: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-main: #1f2937;
+            --text-sub: #4b5563;
+            --primary: #2563eb;       /* 藍色主調 */
+            --accent: #d97706;        /* 橘黃強調 */
+            --success: #059669;       /* 綠色 */
+            --input-bg: #fff;
+            --input-border: #d1d5db;
+            --input-text: #111827;
+            --result-bg: #eff6ff;
+            --result-border: #bfdbfe;
+        }
+
+        /* 夜間模式 (Dark Mode) */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: #0f172a;
+                --card-bg: #1e293b;
+                --text-main: #f3f4f6;
+                --text-sub: #9ca3af;
+                --primary: #60a5fa;
+                --accent: #fbbf24;
+                --success: #34d399;
+                --input-bg: #fbbf24; /* 維持高對比黃色輸入框 */
+                --input-border: #b45309;
+                --input-text: #000000;
+                --result-bg: rgba(37, 99, 235, 0.2);
+                --result-border: #1e40af;
+            }
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        /* 導航列 */
+        .nav-tabs {
+            display: flex;
+            background: var(--card-bg);
+            padding: 10px 10px 0 10px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+
+        .nav-item {
+            flex: 1;
+            text-align: center;
+            padding: 15px 10px;
+            font-size: 15px;
+            font-weight: bold;
+            color: var(--text-sub);
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .nav-item.active {
+            color: var(--primary);
+            border-bottom: 3px solid var(--primary);
+        }
+
+        .container {
+            padding: 15px;
+            max-width: 900px;
+            margin: 0 auto;
+            padding-bottom: 80px;
+        }
+
+        .tab-content { display: none; animation: fadeIn 0.3s; }
+        .tab-content.active { display: block; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* 卡片與通用元件 */
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+
+        h2 {
+            margin-top: 0;
+            font-size: 18px;
+            border-left: 4px solid var(--accent);
+            padding-left: 10px;
+            margin-bottom: 15px;
+            color: var(--text-main);
+        }
+
+        .input-group { margin-bottom: 15px; }
+        
+        label {
+            display: block;
+            font-size: 14px;
+            color: var(--text-sub);
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid var(--input-border);
+            border-radius: 6px;
+            background-color: var(--input-bg);
+            color: var(--input-text);
+            font-weight: bold;
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        button.btn-calc {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+        button.btn-calc:active { transform: scale(0.98); }
+
+        /* 結果顯示區 */
+        .result-box {
+            background-color: var(--result-bg);
+            border: 1px solid var(--result-border);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            margin-top: 10px;
+        }
+        .result-value { font-size: 24px; font-weight: 900; color: var(--primary); }
+        .result-unit { font-size: 14px; color: var(--text-sub); }
+
+        /* 混藥表格樣式 */
+        table.mix-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 650px; /* 手機上可橫向捲動 */
+        }
+        table.mix-table th, table.mix-table td {
+            border: 1px solid var(--input-border);
+            padding: 8px;
+            text-align: center;
+            font-size: 14px;
+            vertical-align: middle;
+        }
+        table.mix-table th { background: rgba(0,0,0,0.05); color: var(--text-main); }
+        table.mix-table input, table.mix-table select {
+            font-size: 14px; padding: 6px; margin: 0; width: 100%; border: 1px solid #ccc;
+        }
+        
+        /* 劑型標籤 (Badge) */
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            text-shadow: 0 1px 1px rgba(0,0,0,0.2);
+        }
+        /* 1. 肥料 */
+        .badge-1 { background: #ea580c; } 
+        /* 2. 固體粉劑 */
+        .badge-2 { background: #854d0e; } 
+        /* 3. 懸浮劑 */
+        .badge-3 { background: #15803d; } 
+        /* 4. 水劑 */
+        .badge-4 { background: #0284c7; } 
+        /* 5. 油性/乳劑 */
+        .badge-5 { background: #7e22ce; } 
+        /* 6. 展著劑 */
+        .badge-6 { background: #be123c; } 
+
+        .step-num {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            background: var(--text-main);
+            color: var(--bg-color);
+            border-radius: 50%;
+            line-height: 24px;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        /* 提示區塊 */
+        .alert-info {
+            background-color: rgba(59, 130, 246, 0.1);
+            border-left: 4px solid var(--primary);
+            padding: 10px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            color: var(--text-main);
+            line-height: 1.5;
+        }
+        
+        .toggle-group {
+            display: flex;
+            background: #e5e7eb;
+            padding: 4px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        .toggle-btn {
+            flex: 1;
+            text-align: center;
+            padding: 8px;
+            font-size: 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            color: #4b5563;
+        }
+        .toggle-btn.active {
+            background: white;
+            color: var(--primary);
+            font-weight: bold;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        @media (prefers-color-scheme: dark) {
+            .toggle-group { background: #374151; }
+            .toggle-btn { color: #9ca3af; }
+            .toggle-btn.active { background: #1f2937; color: var(--accent); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="nav-tabs">
+        <div class="nav-item active" onclick="switchMainTab('tab-drone', this)">
+            🚁 植保機畝用量計算器
+        </div>
+        <div class="nav-item" onclick="switchMainTab('tab-cocktail', this)">
+            🧪 多合一農藥調配
+        </div>
+        <div class="nav-item" onclick="switchMainTab('tab-pesticide', this)">
+            💧 單項農藥稀釋
+        </div>
+    </div>
+
+    <div class="container">
+
+        <div id="tab-drone" class="tab-content active">
+            <div class="card">
+                <h2>藥水用量計算</h2>
+                <div class="input-group">
+                    <label>每分地噴灑用量 (公升=升)</label>
+                    <input type="number" id="sprayPerFen" placeholder="例如：10" oninput="calcDrone()">
+                </div>
+                <div class="result-box">
+                    <div class="result-title">設定噴灑畝用量值 (自動補償 +0.05)</div>
+                    <div>
+                        <span class="result-value" id="sprayPerMu">0.00</span>
+                        <span class="result-unit">(升/畝)</span>
+                    </div>
+                </div>
+                <div class="input-group" style="margin-top:20px;">
+                    <label>請輸入實際作業面積 (畝)：</label>
+                    <input type="number" id="actualMu" placeholder="例如：7.5" oninput="calcDrone()">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div class="result-box">
+                        <div class="result-title">換算分地</div>
+                        <span class="result-value" id="fenResult">0.00</span>
+                    </div>
+                    <div class="result-box">
+                        <div class="result-title">總藥量</div>
+                        <span class="result-value" id="totalSprayMu">0.00</span>
+                    </div>
+                </div>
+                <div class="result-box" style="background: rgba(255, 69, 0, 0.1); border-color: rgba(255, 69, 0, 0.3); margin-top: 22px;">
+                    <div class="result-title">一甲地 (約 14.54 畝) 需要的藥水用量</div>
+                    <div>
+                        <span class="result-value" id="sprayPerJia" style="color: #ff4500;">0.00</span>
+                        <span class="result-unit">(公升)</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>參數紀錄 (手動)</h2>
+                <div class="input-group">
+                    <label>設定畝用量 (升/畝)</label>
+                    <input type="number" id="record_mu_dosage" readonly style="background: var(--bg-color); color: var(--text-sub); border:none;">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div class="input-group">
+                        <label>流速 (升/分鐘)</label>
+                        <input type="number" id="record_flow">
+                    </div>
+                    <div class="input-group">
+                        <label>速度 (秒/公尺)</label>
+                        <input type="number" id="record_speed">
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>總藥量（升）</label>
+                    <input type="number" id="record_total">
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-cocktail" class="tab-content">
+            <div class="card">
+                <h2>1. 設定作業條件</h2>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div class="input-group">
+                        <label>作業面積 (甲)</label>
+                        <input type="number" id="cocktail_area" placeholder="例如：1.5" onchange="calcCocktailTotal()">
+                    </div>
+                    <div class="input-group">
+                        <label>每分地用水量 (公升)</label>
+                        <input type="number" id="cocktail_water_per_fen" placeholder="標準：10~20" value="10" onchange="calcCocktailTotal()">
+                    </div>
+                </div>
+                
+                <div class="result-box" style="margin-bottom: 20px;">
+                    <div class="result-title">本趟預計總需水量</div>
+                    <div>
+                        <span class="result-value" id="cocktail_total_water">0</span>
+                        <span class="result-unit">公升 (L)</span>
+                    </div>
+                    <div style="font-size:12px; color:var(--text-sub); margin-top:5px;">
+                        (公式：甲 × 10分 × 每分用水量)
+                    </div>
+                </div>
+
+                <h2>2. 輸入農藥清單 (最多8筆)</h2>
+                <div class="alert-info">
+                    <strong>💡 系統智慧功能：</strong> 輸入順序不限，按下計算後，系統將自動根據「劑型」重新排列符合 <strong>WALES</strong> 原則的最佳投藥順序。
+                </div>
+                
+                <div style="overflow-x: auto;">
+                    <table class="mix-table" id="mixTable">
+                        <thead>
+                            <tr>
+                                <th style="width:25%">劑型 (Group)</th>
+                                <th style="width:20%">名稱 (Name)</th>
+                                <th style="width:20%">計算方式</th>
+                                <th style="width:15%">數值</th>
+                                <th style="width:15%">包裝(cc/g)</th>
+                                <th style="width:5%">清</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mixBody">
+                            </tbody>
+                    </table>
+                </div>
+
+                <button class="btn-calc" onclick="sortAndCalcCocktail()" style="background-color: var(--success); margin-top: 20px;">
+                    🔄 智慧排序並計算用量 (Calculate & Sort)
+                </button>
+
+                <div id="cocktail_results" style="margin-top:20px; display:none;">
+                    <h2>3. 建議投藥順序表</h2>
+                    <div style="margin-bottom:10px; font-size:14px; font-weight:bold; color:var(--text-main);">
+                        💦 請先在桶內注入 <span style="color:var(--primary);">半桶水</span>，再依序加入：
+                    </div>
+                    <table class="mix-table">
+                        <thead>
+                            <tr>
+                                <th>順序</th>
+                                <th>建議劑型順位</th>
+                                <th>藥名</th>
+                                <th>本趟總藥量</th>
+                                <th>預估規格量</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cocktail_result_body"></tbody>
+                    </table>
+                    <div class="alert-info" style="margin-top:15px;">
+                        * <strong>油性/乳劑 (EC, OD)</strong> 建議較晚加入，避免油膜包覆粉劑造成結塊。<br>
+                        * <strong>展著劑</strong> 建議最後加入，避免產生過多泡沫影響水位判斷。
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-pesticide" class="tab-content">
+            <div class="card">
+                <div class="toggle-group">
+                    <div class="toggle-btn active" onclick="switchPesMode('mode-dilution', this)">💧 算稀釋 (已知藥量)</div>
+                    <div class="toggle-btn" onclick="switchPesMode('mode-amount', this)">💊 算藥量 (已知水量)</div>
+                </div>
+                <div id="mode-dilution" class="pes-mode">
+                    <div class="input-group">
+                        <label>農藥名稱</label>
+                        <input type="text" id="p_name">
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div class="input-group">
+                            <label>藥量 (cc/g)</label>
+                            <input type="number" id="p_amount" placeholder="500">
+                        </div>
+                        <div class="input-group">
+                            <label>稀釋倍數</label>
+                            <input type="number" id="p_ratio" placeholder="1000">
+                        </div>
+                    </div>
+                    <button class="btn-calc" onclick="calcDilution()">計算</button>
+                    <div id="dilution-result" style="display:none; margin-top:15px;">
+                        <div class="result-box">
+                            <div>需加水量：<span id="res_water_need" style="font-size:20px; font-weight:bold;">0</span> L</div>
+                            <div>總藥液量：<span id="res_total" style="font-size:20px; font-weight:bold;">0</span> L</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="mode-amount" class="pes-mode" style="display:none;">
+                    <div class="input-group">
+                        <label>目標總水量 (公升)</label>
+                        <input type="number" id="a_water" placeholder="100">
+                    </div>
+                    <div class="input-group">
+                        <label>稀釋倍數</label>
+                        <input type="number" id="a_ratio" placeholder="500">
+                    </div>
+                    <button class="btn-calc" onclick="calcAmount()">計算</button>
+                    <div id="amount-result" style="display:none; margin-top:15px;">
+                        <div class="result-box">
+                            <div>需要農藥：<span id="res_pest_need" style="font-size:24px; font-weight:bold;">0</span> cc(g)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+<script>
+    // --- 初始化 ---
+    document.addEventListener("DOMContentLoaded", function() {
+        initMixTable();
+        // 自動全選功能
+        document.querySelectorAll("input").forEach(el => {
+            el.addEventListener("click", function() { this.select(); });
+        });
+    });
+
+    function switchMainTab(tabId, btn) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        btn.classList.add('active');
+    }
+
+    function switchPesMode(modeId, btn) {
+        document.querySelectorAll('.pes-mode').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.toggle-btn').forEach(el => el.classList.remove('active'));
+        document.getElementById(modeId).style.display = 'block';
+        btn.classList.add('active');
+    }
+
+    // --- Tab 2: 多合一農藥調配邏輯 (WALES原則) ---
+    const FORMULATION_ORDER = {
+        "fert":  { rank: 1, name: "肥料/調節劑", badge: "badge-1" },
+        "solid": { rank: 2, name: "固體 (WP/WG/SP)", badge: "badge-2" }, 
+        "sc":    { rank: 3, name: "懸浮 (SC/CS)", badge: "badge-3" }, 
+        "sl":    { rank: 4, name: "水劑 (SL/EW)", badge: "badge-4" },    
+        "oil":   { rank: 5, name: "油性 (EC/OD)", badge: "badge-5" },    
+        "adj":   { rank: 6, name: "展著劑", badge: "badge-6" },          
+        "other": { rank: 9, name: "其他", badge: "" }
+    };
+
+    function initMixTable() {
+        const tbody = document.getElementById("mixBody");
+        tbody.innerHTML = "";
+        for(let i=0; i<8; i++) {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td>
+                    <select class="mix-type" style="font-size:13px;">
+                        <option value="fert">1.肥料/調節劑</option>
+                        <option value="solid" selected>2.固體 (WP,WG,SP,GR,DP,EG,SG)</option>
+                        <option value="sc">3.懸浮 (SC,DC,CS,SE)</option>
+                        <option value="sl">4.水劑 (SL,ME,EW)</option>
+                        <option value="oil">5.乳劑/油 (EC,OD,OF,OL)</option>
+                        <option value="adj">6.展著劑</option>
+                    </select>
+                </td>
+                <td><input type="text" class="mix-name" placeholder="藥名"></td>
+                <td>
+                    <select class="mix-method" onchange="toggleMixInput(this)">
+                        <option value="ratio">稀釋倍數</option>
+                        <option value="area">每公頃用量</option>
+                    </select>
+                </td>
+                <td><input type="number" class="mix-val" placeholder="例: 1000"></td>
+                <td><input type="number" class="mix-pack" placeholder="規格"></td>
+                <td><button onclick="clearRow(this)" style="background:#f3f4f6;border:1px solid #ccc;border-radius:4px;width:30px;height:30px;">❌</button></td>
+            `;
+            tbody.appendChild(tr);
+        }
+    }
+
+    function toggleMixInput(selectEl) {
+        const row = selectEl.closest("tr");
+        const valInput = row.querySelector(".mix-val");
+        if(selectEl.value === "ratio") valInput.placeholder = "例: 1000";
+        else valInput.placeholder = "例: 1.5 (L或kg)";
+    }
+
+    function clearRow(btn) {
+        const row = btn.closest("tr");
+        row.querySelectorAll("input").forEach(i => i.value = "");
+        row.querySelector(".mix-type").value = "solid";
+    }
+
+    function calcCocktailTotal() {
+        // 基礎水量計算
+        const jia = parseFloat(document.getElementById("cocktail_area").value) || 0;
+        const waterPerFen = parseFloat(document.getElementById("cocktail_water_per_fen").value) || 0;
+        
+        // 1甲 = 10分
+        const totalWater = jia * 10 * waterPerFen;
+        document.getElementById("cocktail_total_water").innerText = totalWater.toFixed(0);
+        return { totalWater, jia };
+    }
+
+    function sortAndCalcCocktail() {
+        const { totalWater, jia } = calcCocktailTotal();
+        if(totalWater <= 0) { alert("請先輸入有效的作業面積(甲)與每分地用水量"); return; }
+
+        let list = [];
+        const rows = document.querySelectorAll("#mixBody tr");
+        
+        rows.forEach(row => {
+            const name = row.querySelector(".mix-name").value.trim();
+            const type = row.querySelector(".mix-type").value;
+            const method = row.querySelector(".mix-method").value;
+            const val = parseFloat(row.querySelector(".mix-val").value);
+            const pack = parseFloat(row.querySelector(".mix-pack").value);
+
+            // 只要有填數值就列入計算
+            if(val > 0) { 
+                list.push({ name: name || "(未命名)", type, method, val, pack });
+            }
+        });
+
+        if(list.length === 0) { alert("請至少輸入一種農藥資料"); return; }
+
+        // ★ 核心：依照劑型 Rank 進行排序 ★
+        list.sort((a, b) => FORMULATION_ORDER[a.type].rank - FORMULATION_ORDER[b.type].rank);
+
+        // 計算與顯示
+        const resBody = document.getElementById("cocktail_result_body");
+        resBody.innerHTML = "";
+        
+        list.forEach((item, idx) => {
+            let amount = 0;
+            let amountText = "";
+            let packText = "-";
+
+            if(item.method === "ratio" && item.val > 0) {
+                // 模式A: 稀釋倍數 (總水量 / 倍數)
+                amount = totalWater / item.val; 
+                // 轉成 cc/g 顯示 (1 L = 1000 cc)
+                let cc = amount * 1000; 
+                amountText = `${cc.toFixed(0)} cc(g)`;
+                
+                if(item.pack > 0) {
+                    let packs = cc / item.pack;
+                    packText = `${packs.toFixed(1)} 罐(包)`;
+                }
+
+            } else if(item.method === "area" && item.val > 0) {
+                // 模式B: 每公頃用量 (甲數 * 0.97公頃 * 用量)
+                // 1甲 ≈ 0.9699 公頃 -> 簡化為 0.97
+                const ha = jia * 0.9699;
+                let totalL = ha * item.val; // 總需量 (L或kg)
+                let cc = totalL * 1000;
+                amountText = `${cc.toFixed(0)} cc(g)`;
+                
+                if(item.pack > 0) {
+                    let packs = cc / item.pack;
+                    packText = `${packs.toFixed(1)} 罐(包)`;
+                }
+            }
+
+            const typeInfo = FORMULATION_ORDER[item.type];
+            
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td><span class="step-num">${idx+1}</span></td>
+                <td><span class="badge ${typeInfo.badge}">${typeInfo.name}</span></td>
+                <td style="font-weight:bold;">${item.name}</td>
+                <td style="color:var(--primary); font-weight:900; font-size:18px;">${amountText}</td>
+                <td style="color:var(--text-sub);">${packText}</td>
+            `;
+            resBody.appendChild(tr);
+        });
+
+        document.getElementById("cocktail_results").style.display = "block";
+        // 滾動到結果
+        setTimeout(() => {
+            document.getElementById("cocktail_results").scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+    }
+
+    // --- Tab 1: 植保機畝用量計算 (保持原始邏輯) ---
+    function calcDrone() {
+        const sprayPerFen = parseFloat(document.getElementById('sprayPerFen').value);
+        const actualMu = parseFloat(document.getElementById('actualMu').value);
+        const muToFen = 0.687; 
+        const jiaCoef = 14.54; 
+
+        if (!isNaN(sprayPerFen)) {
+            // 自動補償 +0.05
+            const sprayPerMuNum = (sprayPerFen * muToFen) + 0.05;
+            document.getElementById('sprayPerMu').innerText = sprayPerMuNum.toFixed(2);
+            document.getElementById('record_mu_dosage').value = sprayPerMuNum.toFixed(2);
+
+            if (!isNaN(actualMu)) {
+                document.getElementById('fenResult').innerText = (actualMu * muToFen).toFixed(2);
+                document.getElementById('totalSprayMu').innerText = (actualMu * sprayPerMuNum).toFixed(2);
+                
+                // 一甲地用量計算
+                const sprayPerJia = (jiaCoef * sprayPerMuNum).toFixed(2);
+                document.getElementById('sprayPerJia').textContent = sprayPerJia;
+            }
+        }
+    }
+
+    // --- Tab 3: 單項稀釋 (保持原始邏輯) ---
+    function calcDilution() {
+        const amount = parseFloat(document.getElementById("p_amount").value);
+        const dilution = parseFloat(document.getElementById("p_ratio").value);
+        if(amount>0 && dilution>0){
+            const amountL = amount / 1000;
+            const water = amountL * (dilution - 1);
+            const total = amountL + water;
+            document.getElementById("res_water_need").innerText = water.toFixed(2);
+            document.getElementById("res_total").innerText = total.toFixed(2);
+            document.getElementById("dilution-result").style.display = "block";
+        }
+    }
+
+    function calcAmount() {
+        const water = parseFloat(document.getElementById("a_water").value);
+        const ratio = parseFloat(document.getElementById("a_ratio").value);
+        if(water>0 && ratio>0){
+            const pest = (water / ratio) * 1000;
+            document.getElementById("res_pest_need").innerText = pest.toFixed(1);
+            document.getElementById("amount-result").style.display = "block";
+        }
+    }
+</script>
+</body>
+</html>
